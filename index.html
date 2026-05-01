@@ -2,230 +2,221 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>DNA Metabolism Master</title>
+<title>DNA Scale Model</title>
 
 <style>
-body {
+body{
     margin:0;
-    font-family:Arial;
     background:#0b1020;
     color:white;
+    font-family:Arial;
+    text-align:center;
 }
 
-.container { display:flex; height:100vh; }
-
-.sidebar {
-    width:220px;
+canvas{
     background:#020617;
-    padding:10px;
+    border:1px solid #334155;
+    margin-top:20px;
 }
 
-button {
-    width:100%;
-    margin:5px 0;
-    padding:8px;
-    background:#1e293b;
-    color:white;
-    border:none;
-    cursor:pointer;
+.info{
+    margin-top:10px;
+    font-size:14px;
 }
-
-.main {
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-}
-
-canvas { background:#020617; border:1px solid #334155; }
-
-.controls { margin-top:10px; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<h2>🧬 DNA Metabolism (Scale Accurate Model)</h2>
 
-<div class="sidebar">
-<h3>Modes</h3>
-<button onclick="setMode('transcription')">Transcription</button>
-<button onclick="setMode('translation')">Translation</button>
-<button onclick="setMode('exam')">Exam Diagram</button>
-</div>
-
-<div class="main">
-<canvas id="c" width="900" height="500"></canvas>
-
-<div class="controls">
 <button onclick="play()">Play</button>
 <button onclick="pause()">Pause</button>
 <button onclick="reset()">Reset</button>
-</div>
-</div>
 
+<canvas id="c" width="1200" height="600"></canvas>
+
+<div class="info">
+Scale: 1 nm = 3 px (adjustable)
 </div>
 
 <script>
 const ctx = c.getContext("2d");
 
-let mode = "transcription";
-let t = 0;
-let running = false;
+/* ===========================
+   SCALE SYSTEM
+=========================== */
+
+const SCALE = 3; // 1 nm = 3 pixels
+
+function nm(n){
+    return n * SCALE;
+}
+
+/* ===========================
+   REAL BIO SIZES (nm)
+=========================== */
+
+const SIZE = {
+    dnaWidth: 2,
+    polymerase: 12,
+    ribosome: 25
+};
+
+/* ===========================
+   DATA
+=========================== */
 
 const dna = "ATGCGTACGTAGCTAG";
+let rna = [];
+let protein = [];
 
-/* ---------- HELPERS ---------- */
+let phase = "transcription";
+let index = 0;
+let codonIndex = 0;
+let running = false;
 
-function compRNA(b){
+/* ===========================
+   COMPLEMENT
+=========================== */
+
+function rnaComp(b){
     return {A:"U",T:"A",G:"C",C:"G"}[b];
 }
 
-/* ---------- TRANSCRIPTION ---------- */
+/* ===========================
+   DRAW DNA (scaled)
+=========================== */
 
-function drawTranscription(){
-    ctx.fillText("Transcription (DNA → RNA)",50,50);
+function drawDNA(){
+    ctx.fillText("DNA (2 nm width)",50,80);
 
-    // DNA
-    for(let i=0;i<dna.length;i++){
-        ctx.fillStyle="#38bdf8";
-        ctx.fillText(dna[i],100+i*25,150);
-    }
+    let height = nm(SIZE.dnaWidth);
 
-    // RNA growing
-    ctx.fillStyle="#22c55e";
-    for(let i=0;i<t/3;i++){
-        ctx.fillText(compRNA(dna[i]),100+i*25,250);
-    }
-
-    // Polymerase
-    ctx.fillStyle="#f97316";
-    ctx.fillRect(100+(t/3)*25,120,20,30);
-
-    ctx.fillText("RNA Polymerase",100+(t/3)*25,110);
-}
-
-/* ---------- TRANSLATION ---------- */
-
-function drawTranslation(){
-    ctx.fillText("Translation (mRNA → Protein)",50,50);
-
-    // mRNA
-    ctx.fillStyle="#22c55e";
-    for(let i=0;i<dna.length;i++){
-        ctx.fillText(compRNA(dna[i]),100+i*25,200);
-    }
-
-    // Ribosome
-    ctx.fillStyle="#f97316";
-    ctx.fillRect(100+(t/3)*25,170,40,40);
-
-    // tRNA
     ctx.fillStyle="#38bdf8";
-    ctx.fillText("tRNA",100+(t/3)*25,250);
 
-    // Polypeptide chain
+    ctx.fillRect(100,120,800,height);
+
+    ctx.fillStyle="#06b6d4";
+    ctx.fillRect(100,120+height+5,800,height);
+}
+
+/* ===========================
+   RNA POLYMERASE
+=========================== */
+
+function drawPolymerase(){
+    let size = nm(SIZE.polymerase);
+
+    ctx.fillStyle="#f97316";
+    ctx.beginPath();
+    ctx.arc(100 + index*20,140,size/2,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillText("RNA Polymerase (~12 nm)",100 + index*20 - 40,100);
+}
+
+/* ===========================
+   RNA
+=========================== */
+
+function drawRNA(){
     ctx.fillStyle="#22c55e";
-    for(let i=0;i<t/4;i++){
-        ctx.fillText("●",100+i*15,300);
+
+    for(let i=0;i<rna.length;i++){
+        ctx.fillRect(100+i*20,200,10,10);
     }
 }
 
-/* ---------- EXAM DIAGRAM ---------- */
+/* ===========================
+   RIBOSOME
+=========================== */
 
-function drawExam(){
-    ctx.fillText("DNA → RNA → Protein (Central Dogma)",50,50);
+function drawRibosome(){
+    let size = nm(SIZE.ribosome);
 
-    // DNA
-    ctx.fillStyle="#38bdf8";
-    ctx.fillText("DNA",100,150);
-
-    // Arrow
-    ctx.fillText("↓ Transcription",100,200);
-
-    // RNA
-    ctx.fillStyle="#22c55e";
-    ctx.fillText("RNA",100,250);
-
-    ctx.fillText("↓ Translation",100,300);
-
-    // Protein
     ctx.fillStyle="#f97316";
-    ctx.fillText("Protein",100,350);
+    ctx.beginPath();
+    ctx.arc(100 + codonIndex*60,300,size/2,0,Math.PI*2);
+    ctx.fill();
 
-    // Side info
-    ctx.fillStyle="#e2e8f0";
-    ctx.fillText("Replication → DNA copies itself",300,150);
-    ctx.fillText("Repair → fixes errors",300,200);
-    ctx.fillText("Recombination → genetic exchange",300,250);
+    ctx.fillText("Ribosome (~25 nm)",100 + codonIndex*60 - 40,260);
 }
 
-/* ---------- MAIN ---------- */
+/* ===========================
+   PROTEIN
+=========================== */
+
+function drawProtein(){
+    ctx.fillStyle="#facc15";
+
+    for(let i=0;i<protein.length;i++){
+        ctx.fillRect(100+i*50,350,20,15);
+    }
+}
+
+/* ===========================
+   LOGIC
+=========================== */
+
+function step(){
+
+    if(phase==="transcription"){
+        if(index < dna.length){
+            rna.push(rnaComp(dna[index]));
+            index++;
+        } else {
+            phase="translation";
+        }
+    }
+
+    else if(phase==="translation"){
+        if(codonIndex*3 < rna.length){
+            protein.push("AA");
+            codonIndex++;
+        }
+    }
+}
+
+/* ===========================
+   DRAW
+=========================== */
 
 function draw(){
-    ctx.clearRect(0,0,900,500);
+    ctx.clearRect(0,0,1200,600);
     ctx.font="14px Arial";
 
-    if(mode==="transcription") drawTranscription();
-    if(mode==="translation") drawTranslation();
-    if(mode==="exam") drawExam();
+    drawDNA();
+    drawPolymerase();
+    drawRNA();
+    drawRibosome();
+    drawProtein();
+
+    ctx.fillText("Phase: "+phase,900,50);
 }
+
+/* ===========================
+   LOOP
+=========================== */
 
 function loop(){
     if(!running) return;
-    t++;
+    step();
     draw();
-    setTimeout(loop,50);
+    setTimeout(loop,500);
 }
 
 function play(){ running=true; loop(); }
 function pause(){ running=false; }
-function reset(){ running=false; t=0; draw(); }
-function setMode(m){ mode=m; reset(); }
+function reset(){
+    running=false;
+    rna=[]; protein=[];
+    index=0; codonIndex=0;
+    phase="transcription";
+    draw();
+}
 
 draw();
-</script>
-
-</body>
-</html>    setTimeout(step, document.getElementById("speed").value);
-}
-
-function spliceRNA(){
-    // remove introns
-    let spliced = [];
-    for(let i=0;i<rna.length;i++){
-        if(exons.includes(i)){
-            spliced.push(rna[i]);
-        }
-    }
-
-    rna = spliced;
-    index = rna.length;
-
-    render();
-
-    ctx.fillStyle="#22c55e";
-    ctx.fillText("Splicing Complete (Introns Removed)", 300, 400);
-}
-
-function play(){
-    running = true;
-    direction = 1;
-    step();
-}
-
-function pause(){
-    running = false;
-}
-
-function reverse(){
-    running = true;
-    direction = -1;
-    step();
-}
-
-render();
 </script>
 
 </body>
