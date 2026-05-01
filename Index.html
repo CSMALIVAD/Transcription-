@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RNA Transcription + Splicing Simulation</title>
+<style>
+body {
+    margin: 0;
+    background: #020617;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+}
+canvas {
+    background: #020617;
+    display: block;
+    margin: auto;
+}
+button {
+    margin: 10px;
+    padding: 10px 20px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h2>🧬 RNA Transcription + Splicing (Lehninger Model)</h2>
+<canvas id="canvas" width="1200" height="500"></canvas>
+
+<button onclick="start()">Start</button>
+<button onclick="splice()">Splicing</button>
+<button onclick="reset()">Reset</button>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let dna = "ATGCGTACGTTAGCGTACGTAGCTAG";
+let introns = [5,6,7,15,16]; // positions
+let index = 0;
+let rna = "";
+let running = false;
+
+function drawDNA() {
+    for (let i = 0; i < dna.length; i++) {
+        let x = 50 + i * 35;
+        let y1 = 200;
+        let y2 = 250;
+
+        ctx.strokeStyle = "#64748b";
+        ctx.beginPath();
+        ctx.moveTo(x, y1);
+        ctx.lineTo(x, y2);
+        ctx.stroke();
+
+        // Exon vs Intron color
+        if (introns.includes(i)) {
+            ctx.fillStyle = "#ef4444"; // intron
+        } else {
+            ctx.fillStyle = "#22c55e"; // exon
+        }
+
+        ctx.fillText(dna[i], x - 5, y1 - 10);
+    }
+}
+
+function complement(b) {
+    return {A:"U", T:"A", G:"C", C:"G"}[b];
+}
+
+function drawRNA() {
+    for (let i = 0; i < rna.length; i++) {
+        let x = 50 + i * 35;
+        let y = 320;
+
+        ctx.fillStyle = "cyan";
+        ctx.fillText(rna[i], x - 5, y);
+    }
+}
+
+function drawPolymerase() {
+    let x = 50 + index * 35;
+    ctx.fillStyle = "yellow";
+    ctx.beginPath();
+    ctx.arc(x, 225, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillText("RNA Pol", x - 20, 260);
+}
+
+function drawBubble() {
+    let x = 50 + index * 35;
+
+    ctx.strokeStyle = "#38bdf8";
+    ctx.beginPath();
+    ctx.ellipse(x, 225, 40, 60, 0, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function loop() {
+    if (!running) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawDNA();
+    drawRNA();
+    drawBubble();
+    drawPolymerase();
+
+    if (index < dna.length) {
+        rna += complement(dna[index]);
+        index++;
+    }
+
+    setTimeout(loop, 300);
+}
+
+function start() {
+    running = true;
+    loop();
+}
+
+function splice() {
+    // remove introns
+    let spliced = "";
+    for (let i = 0; i < rna.length; i++) {
+        if (!introns.includes(i)) {
+            spliced += rna[i];
+        }
+    }
+
+    rna = spliced;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawRNA();
+
+    ctx.fillStyle = "white";
+    ctx.fillText("Spliced mRNA (Introns removed)", 450, 400);
+}
+
+function reset() {
+    index = 0;
+    rna = "";
+    running = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDNA();
+}
+
+ctx.font = "16px Arial";
+drawDNA();
+</script>
+
+</body>
+</html>
