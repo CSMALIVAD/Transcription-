@@ -2,158 +2,148 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>RNA Transcription + Splicing Simulation</title>
+<title>Advanced RNA Transcription Simulator</title>
 <style>
 body {
-    margin: 0;
-    background: #020617;
-    color: white;
-    font-family: Arial;
-    text-align: center;
+    background:#020617;
+    color:white;
+    font-family:Arial;
+    text-align:center;
 }
 canvas {
-    background: #020617;
-    display: block;
-    margin: auto;
+    border:2px solid #38bdf8;
+    margin-top:15px;
+    background:#000814;
 }
-button {
-    margin: 10px;
-    padding: 10px 20px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+button, input {
+    margin:5px;
+    padding:8px;
+    font-size:14px;
 }
 </style>
 </head>
-
 <body>
 
-<h2>🧬 RNA Transcription + Splicing (Lehninger Model)</h2>
-<canvas id="canvas" width="1200" height="500"></canvas>
+<h2>🧬 Advanced RNA Transcription Model</h2>
 
-<button onclick="start()">Start</button>
-<button onclick="splice()">Splicing</button>
-<button onclick="reset()">Reset</button>
+<button onclick="play()">▶ Play</button>
+<button onclick="pause()">⏸ Pause</button>
+<button onclick="reverse()">⏪ Reverse</button>
+
+Speed: <input type="range" min="100" max="1000" value="400" id="speed">
+
+<canvas id="c" width="1000" height="500"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas");
+const dna = "ATGCGTACGTAGCTAGCTAGGCTA";
+const exons = [0,1,2,6,7,8,15,16,17]; // exon positions
+let rna = [];
+let index = 0;
+let running = false;
+let direction = 1;
+
+const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-let dna = "ATGCGTACGTTAGCGTACGTAGCTAG";
-let introns = [5,6,7,15,16]; // positions
-let index = 0;
-let rna = "";
-let running = false;
+function complement(b){
+    return {A:"U",T:"A",G:"C",C:"G"}[b];
+}
 
-function drawDNA() {
-    for (let i = 0; i < dna.length; i++) {
-        let x = 50 + i * 35;
-        let y1 = 200;
-        let y2 = 250;
-
-        ctx.strokeStyle = "#64748b";
-        ctx.beginPath();
-        ctx.moveTo(x, y1);
-        ctx.lineTo(x, y2);
-        ctx.stroke();
-
-        // Exon vs Intron color
-        if (introns.includes(i)) {
-            ctx.fillStyle = "#ef4444"; // intron
-        } else {
-            ctx.fillStyle = "#22c55e"; // exon
-        }
-
-        ctx.fillText(dna[i], x - 5, y1 - 10);
+function drawDNA(){
+    for(let i=0;i<dna.length;i++){
+        ctx.fillStyle = exons.includes(i) ? "#22c55e" : "#ef4444"; // exon green, intron red
+        ctx.fillText(dna[i], 50+i*30, 150);
     }
 }
 
-function complement(b) {
-    return {A:"U", T:"A", G:"C", C:"G"}[b];
-}
-
-function drawRNA() {
-    for (let i = 0; i < rna.length; i++) {
-        let x = 50 + i * 35;
-        let y = 320;
-
-        ctx.fillStyle = "cyan";
-        ctx.fillText(rna[i], x - 5, y);
+function drawRNA(){
+    ctx.fillStyle="#38bdf8";
+    for(let i=0;i<rna.length;i++){
+        ctx.fillText(rna[i], 50+i*30, 300);
     }
 }
 
-function drawPolymerase() {
-    let x = 50 + index * 35;
-    ctx.fillStyle = "yellow";
+function drawBubble(){
+    ctx.strokeStyle="#facc15";
     ctx.beginPath();
-    ctx.arc(x, 225, 20, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillText("RNA Pol", x - 20, 260);
-}
-
-function drawBubble() {
-    let x = 50 + index * 35;
-
-    ctx.strokeStyle = "#38bdf8";
-    ctx.beginPath();
-    ctx.ellipse(x, 225, 40, 60, 0, 0, Math.PI * 2);
+    ctx.arc(65+index*30, 140, 40, 0, Math.PI*2);
     ctx.stroke();
 }
 
-function loop() {
-    if (!running) return;
+function drawPolymerase(){
+    ctx.fillStyle="#f97316";
+    ctx.fillRect(50+index*30,100,40,30);
+    ctx.fillText("Pol",55+index*30,120);
+}
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawLoop(){
+    ctx.strokeStyle="#a78bfa";
+    ctx.beginPath();
+    ctx.moveTo(50+index*30,140);
+    ctx.bezierCurveTo(200,50,400,450,700,150);
+    ctx.stroke();
+}
 
+function render(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
     drawDNA();
     drawRNA();
     drawBubble();
     drawPolymerase();
+    drawLoop();
+}
 
-    if (index < dna.length) {
-        rna += complement(dna[index]);
-        index++;
+function step(){
+    if(!running) return;
+
+    if(index>=0 && index<dna.length){
+        rna[index] = complement(dna[index]);
+        index += direction;
+    } else {
+        running = false;
+        spliceRNA();
+        return;
     }
 
-    setTimeout(loop, 300);
+    render();
+    setTimeout(step, document.getElementById("speed").value);
 }
 
-function start() {
-    running = true;
-    loop();
-}
-
-function splice() {
+function spliceRNA(){
     // remove introns
-    let spliced = "";
-    for (let i = 0; i < rna.length; i++) {
-        if (!introns.includes(i)) {
-            spliced += rna[i];
+    let spliced = [];
+    for(let i=0;i<rna.length;i++){
+        if(exons.includes(i)){
+            spliced.push(rna[i]);
         }
     }
 
     rna = spliced;
+    index = rna.length;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawRNA();
+    render();
 
-    ctx.fillStyle = "white";
-    ctx.fillText("Spliced mRNA (Introns removed)", 450, 400);
+    ctx.fillStyle="#22c55e";
+    ctx.fillText("Splicing Complete (Introns Removed)", 300, 400);
 }
 
-function reset() {
-    index = 0;
-    rna = "";
+function play(){
+    running = true;
+    direction = 1;
+    step();
+}
+
+function pause(){
     running = false;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawDNA();
 }
 
-ctx.font = "16px Arial";
-drawDNA();
+function reverse(){
+    running = true;
+    direction = -1;
+    step();
+}
+
+render();
 </script>
 
 </body>
